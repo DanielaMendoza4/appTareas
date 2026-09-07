@@ -18,15 +18,16 @@
         android:textSize="20sp"
         android:textStyle="bold" />
 
-    <!-- Barra de filtros por Estado -->
-    <HorizontalScrollView
-        android:id="@+id/scrollFiltros"
+    <!-- Barra de filtros por Estado (2 filas) -->
+    <LinearLayout
+        android:id="@+id/layoutFiltros"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/tvTitulo"
         android:layout_marginTop="20dp"
-        android:scrollbars="none">
+        android:orientation="vertical">
 
+        <!-- Fila 1 -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -62,12 +63,19 @@
                 style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
-                android:layout_marginEnd="8dp"
                 android:text="En progreso"
                 android:textAllCaps="false"
                 android:textColor="#555555"
                 app:cornerRadius="20dp"
                 app:strokeColor="#CCCCCC" />
+        </LinearLayout>
+
+        <!-- Fila 2 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
 
             <Button
                 android:id="@+id/btnCompletadas"
@@ -80,7 +88,8 @@
                 app:cornerRadius="20dp"
                 app:strokeColor="#CCCCCC" />
         </LinearLayout>
-    </HorizontalScrollView>
+
+    </LinearLayout>
 
     <!-- Lista que consulta a SQLite -->
     <androidx.recyclerview.widget.RecyclerView
@@ -88,8 +97,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/fabAgregarTarea"
-        android:layout_below="@id/scrollFiltros"
-        android:layout_marginTop="16dp" />
+        android:layout_below="@id/layoutFiltros"
+        android:layout_marginTop="14dp"
+        android:layout_marginBottom="2dp" />
 
     <!-- Botón flotante para agregar tarea -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
