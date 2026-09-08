@@ -40,7 +40,7 @@ public class TareaAdapter extends RecyclerView.Adapter<TareaAdapter.TareaViewHol
         holder.tvTitulo.setText(tarea.getTitulo());
         holder.tvDescripcion.setText(tarea.getDescripcion());
         holder.tvEstado.setText(tarea.getEstado());
-        holder.tvFechaVencimiento.setText("Vence: " + tarea.getFechaVencimiento());
+        holder.tvFechaVencimiento.setText("Vence: " + FechaUtils.paraUIVencimiento(tarea.getFechaVencimiento()));
 
         switch (tarea.getEstado()) {
             case Tarea.ESTADO_PENDIENTE:

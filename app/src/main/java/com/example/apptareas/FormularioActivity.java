@@ -12,28 +12,32 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.text.SimpleDateFormat;
+import com.example.apptareas.database.TareasDbHelper;
+
 import java.util.Calendar;
-import java.util.Locale;
 
 public class FormularioActivity extends AppCompatActivity {
 
     public static final String EXTRA_TAREA = "extra_tarea";
+    public static final String EXTRA_TAREA_ID = "extra_tarea_id";
 
     private EditText edtTitulo, edtDescripcion, edtUsuario;
-    private Button btnPendiente, btnProgreso, btnCompletada, btnSeleccionarFecha;
+    private Button btnPendiente, btnProgreso, btnCompletada, btnSeleccionarFecha, btnGuardarTarea;
     private TextView txtFechaCreacion;
 
     private String estadoSeleccionado = Tarea.ESTADO_PENDIENTE;
-    private String fechaVencimiento = "";
+    private String fechaCreacionISO = "";
+    private String fechaVencimientoISO = "";
 
-    private final SimpleDateFormat formatoCreacion = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
-    private final SimpleDateFormat formatoVencimiento = new SimpleDateFormat("dd MMM", new Locale("es", "ES"));
+    private TareasDbHelper dbHelper;
+    private long tareaIdEditar = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.nueva_tarea);
+
+        dbHelper = new TareasDbHelper(this);
 
         edtTitulo = findViewById(R.id.edtTitulo);
         edtDescripcion = findViewById(R.id.edtDescripcion);
@@ -43,9 +47,32 @@ public class FormularioActivity extends AppCompatActivity {
         btnProgreso = findViewById(R.id.btnProgreso);
         btnCompletada = findViewById(R.id.btnCompletada);
         btnSeleccionarFecha = findViewById(R.id.btnSeleccionarFecha);
+        btnGuardarTarea = findViewById(R.id.btnGuardarTarea);
 
-        txtFechaCreacion.setText(formatoCreacion.format(Calendar.getInstance().getTime()));
-        marcarEstadoSeleccionado(Tarea.ESTADO_PENDIENTE);
+        tareaIdEditar = getIntent().getLongExtra(EXTRA_TAREA_ID, -1);
+
+        if (tareaIdEditar != -1) {
+            Tarea existente = dbHelper.obtenerPorId(tareaIdEditar);
+            if (existente == null) {
+                Toast.makeText(this, "Tarea no encontrada", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+            edtTitulo.setText(existente.getTitulo());
+            edtDescripcion.setText(existente.getDescripcion());
+            edtUsuario.setText(existente.getUsuarioAsignado());
+            estadoSeleccionado = existente.getEstado();
+            fechaCreacionISO = existente.getFechaCreacion();
+            fechaVencimientoISO = existente.getFechaVencimiento();
+            txtFechaCreacion.setText(FechaUtils.paraUICreacion(fechaCreacionISO));
+            btnSeleccionarFecha.setText(FechaUtils.paraUIVencimiento(fechaVencimientoISO));
+            btnGuardarTarea.setText("Actualizar Tarea");
+            marcarEstadoSeleccionado(estadoSeleccionado);
+        } else {
+            fechaCreacionISO = FechaUtils.hoyISO();
+            txtFechaCreacion.setText(FechaUtils.paraUICreacion(fechaCreacionISO));
+            marcarEstadoSeleccionado(Tarea.ESTADO_PENDIENTE);
+        }
 
         btnPendiente.setOnClickListener(v -> marcarEstadoSeleccionado(Tarea.ESTADO_PENDIENTE));
         btnProgreso.setOnClickListener(v -> marcarEstadoSeleccionado(Tarea.ESTADO_EN_PROGRESO));
@@ -54,7 +81,7 @@ public class FormularioActivity extends AppCompatActivity {
         btnSeleccionarFecha.setOnClickListener(v -> mostrarSelectorDeFecha());
         findViewById(R.id.btnCalendario).setOnClickListener(v -> mostrarSelectorDeFecha());
         findViewById(R.id.btnRegresar).setOnClickListener(v -> finish());
-        findViewById(R.id.btnGuardarTarea).setOnClickListener(v -> guardarTarea());
+        btnGuardarTarea.setOnClickListener(v -> guardarTarea());
     }
 
     private void marcarEstadoSeleccionado(String estado) {
@@ -78,16 +105,9 @@ public class FormularioActivity extends AppCompatActivity {
     private void mostrarSelectorDeFecha() {
         Calendar hoy = Calendar.getInstance();
         new DatePickerDialog(this, (view, anio, mes, dia) -> {
-            Calendar seleccionada = Calendar.getInstance();
-            seleccionada.set(anio, mes, dia);
-            fechaVencimiento = capitalizar(formatoVencimiento.format(seleccionada.getTime()));
-            btnSeleccionarFecha.setText(fechaVencimiento);
+            fechaVencimientoISO = FechaUtils.isoDe(anio, mes, dia);
+            btnSeleccionarFecha.setText(FechaUtils.paraUIVencimiento(fechaVencimientoISO));
         }, hoy.get(Calendar.YEAR), hoy.get(Calendar.MONTH), hoy.get(Calendar.DAY_OF_MONTH)).show();
-    }
-
-    private String capitalizar(String texto) {
-        if (texto.isEmpty()) return texto;
-        return Character.toUpperCase(texto.charAt(0)) + texto.substring(1);
     }
 
     private void guardarTarea() {
@@ -99,17 +119,28 @@ public class FormularioActivity extends AppCompatActivity {
             Toast.makeText(this, "Ingresa un título para la tarea", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (fechaVencimiento.isEmpty()) {
+        if (fechaVencimientoISO.isEmpty()) {
             Toast.makeText(this, "Selecciona una fecha de vencimiento", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        Tarea tarea = new Tarea(System.currentTimeMillis(), titulo, descripcion,
-                estadoSeleccionado, txtFechaCreacion.getText().toString(), fechaVencimiento, usuario);
+        if (tareaIdEditar != -1) {
+            Tarea actualizada = new Tarea(tareaIdEditar, titulo, descripcion,
+                    estadoSeleccionado, fechaCreacionISO, fechaVencimientoISO, usuario);
+            dbHelper.actualizar(actualizada);
+        } else {
+            Tarea nueva = new Tarea(0, titulo, descripcion,
+                    estadoSeleccionado, fechaCreacionISO, fechaVencimientoISO, usuario);
+            dbHelper.insertar(nueva);
+        }
 
-        Intent resultado = new Intent();
-        resultado.putExtra(EXTRA_TAREA, tarea);
-        setResult(RESULT_OK, resultado);
+        setResult(RESULT_OK, new Intent());
         finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (dbHelper != null) dbHelper.close();
+        super.onDestroy();
     }
 }
